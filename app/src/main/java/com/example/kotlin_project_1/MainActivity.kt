@@ -122,6 +122,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        findViewById<Button>(R.id.btnMap).setOnClickListener {
+            startActivity(Intent(this, OpenStreetMapsActivity::class.java))
+        }
+
+        findViewById<Button>(R.id.btnWeather).setOnClickListener {
+            startActivity(Intent(this, WeatherActivity::class.java))
+        }
+
         setupBottomNavigation()
     }
 

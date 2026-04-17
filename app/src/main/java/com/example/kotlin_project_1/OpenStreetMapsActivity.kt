@@ -4,7 +4,12 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
@@ -24,7 +29,6 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
-import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 import java.io.FileOutputStream
@@ -131,7 +135,8 @@ class OpenStreetMapsActivity : AppCompatActivity(), LocationListener {
         val mapController = map.controller
         mapController.setZoom(18.0)
         
-        val startPoint = GeoPoint(40.3323, -3.7653)
+        // Center on ETSI Informática
+        val startPoint = GeoPoint(40.4523, -3.7261)
         mapController.setCenter(startPoint)
 
         locationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(this), map)
@@ -139,24 +144,56 @@ class OpenStreetMapsActivity : AppCompatActivity(), LocationListener {
         locationOverlay.enableFollowLocation()
         map.overlays.add(locationOverlay)
 
-        // Tour Markers
-        val tourLocations = listOf(
-            Triple(GeoPoint(40.3323, -3.7653), "Campus Entrance", "Start your tour here!"),
-            Triple(GeoPoint(40.3325, -3.7645), "ETSISI Building", "Engineering School."),
-            Triple(GeoPoint(40.3318, -3.7648), "Campus Library", "Study Area.")
-        )
+        addRecyclingMarkers()
 
-        tourLocations.forEach { (point, title, description) ->
+        map.invalidate()
+    }
+
+    private fun addRecyclingMarkers() {
+        CampusData.exampleBins.forEach { bin ->
+            val point = GeoPoint(bin.latitude, bin.longitude)
             val marker = Marker(map)
             marker.position = point
             marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-            marker.title = title
-            marker.snippet = description
-            marker.icon = ContextCompat.getDrawable(this, android.R.drawable.ic_dialog_map)
+            marker.title = "${bin.type} Bin"
+            marker.snippet = bin.address
+            
+            // Generate custom colored icon
+            val color = when (bin.type) {
+                BinType.PAPER -> Color.BLUE
+                BinType.GLASS -> Color.GREEN
+                BinType.PLASTIC -> Color.YELLOW
+                BinType.ORGANIC -> Color.rgb(139, 69, 19) // Brown
+                BinType.E_WASTE -> Color.RED
+            }
+            
+            marker.icon = createColoredMarkerIcon(color)
+            
+            marker.setOnMarkerClickListener { m, _ ->
+                m.showInfoWindow()
+                true
+            }
+
             map.overlays.add(marker)
         }
+    }
 
-        map.invalidate()
+    private fun createColoredMarkerIcon(color: Int): Drawable {
+        val size = 60
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val paint = Paint()
+        
+        // Draw outer circle (border)
+        paint.color = Color.WHITE
+        paint.style = Paint.Style.FILL
+        canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
+        
+        // Draw inner circle (the actual color)
+        paint.color = color
+        canvas.drawCircle(size / 2f, size / 2f, size / 2.5f, paint)
+        
+        return BitmapDrawable(resources, bitmap)
     }
 
     private fun startLocationUpdates() {
