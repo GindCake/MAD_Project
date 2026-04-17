@@ -27,12 +27,14 @@ import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
+import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 class OpenStreetMapsActivity : AppCompatActivity(), LocationListener {
     private val TAG = "btaOpenStreetMap"
+    private val FILE_NAME = "location_data.txt"
     private lateinit var map: MapView
     private lateinit var locationOverlay: MyLocationNewOverlay
     private lateinit var locationManager: LocationManager
@@ -176,7 +178,21 @@ class OpenStreetMapsActivity : AppCompatActivity(), LocationListener {
             val alt = location.altitude
             val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(location.time))
 
-            Log.d(TAG, "RECORDING - Lat: $lat, Lon: $lon, Alt: $alt m, Time: $timestamp")
+            val dataString = "Lat: $lat, Lon: $lon, Alt: $alt m, Time: $timestamp\n"
+            Log.d(TAG, "RECORDING - $dataString")
+            
+            saveDataToFile(dataString)
+        }
+    }
+
+    private fun saveDataToFile(data: String) {
+        try {
+            val fileOutputStream: FileOutputStream = openFileOutput(FILE_NAME, Context.MODE_APPEND)
+            fileOutputStream.write(data.toByteArray())
+            fileOutputStream.close()
+            Log.d(TAG, "Data saved to file: $FILE_NAME")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error saving data to file", e)
         }
     }
 

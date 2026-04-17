@@ -13,18 +13,26 @@ import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
+import androidx.appcompat.widget.Toolbar
 import androidx.core.content.ContextCompat
+import androidx.core.view.GravityCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.drawerlayout.widget.DrawerLayout
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.google.android.material.navigation.NavigationView
 
 class MainActivity : AppCompatActivity() {
     private val TAG = "btaMainActivity"
     private val PREFS_NAME = "MyPrefs"
     private val KEY_USER_ID = "userId"
+
+    private lateinit var drawerLayout: DrawerLayout
+    private lateinit var toggle: ActionBarDrawerToggle
 
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
@@ -48,9 +56,26 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "onCreate: The activity is being created.")
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
+        
+        val toolbar: Toolbar = findViewById(R.id.toolbar)
+        setSupportActionBar(toolbar)
+
+        drawerLayout = findViewById(R.id.drawer_layout)
+        val navView: NavigationView = findViewById(R.id.nav_view)
+
+        toggle = ActionBarDrawerToggle(this, drawerLayout, toolbar, R.string.nav_home, R.string.nav_home)
+        drawerLayout.addDrawerListener(toggle)
+        toggle.syncState()
+
+        navView.setNavigationItemSelectedListener { item ->
+            handleNavigation(item.itemId)
+            drawerLayout.closeDrawer(GravityCompat.START)
+            true
+        }
+
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main_content)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+            v.setPadding(systemBars.left, 0, systemBars.right, 0)
             insets
         }
 
@@ -97,29 +122,32 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        setupNavigation()
+        setupBottomNavigation()
     }
 
-    private fun setupNavigation() {
+    private fun handleNavigation(itemId: Int) {
+        when (itemId) {
+            R.id.nav_home -> {
+                // Already here
+            }
+            R.id.nav_map -> {
+                startActivity(Intent(this, OpenStreetMapsActivity::class.java))
+            }
+            R.id.nav_list -> {
+                startActivity(Intent(this, MainActivity2::class.java))
+            }
+            R.id.nav_settings -> {
+                startActivity(Intent(this, SettingsActivity::class.java))
+            }
+        }
+    }
+
+    private fun setupBottomNavigation() {
         val bottomNavigation: BottomNavigationView = findViewById(R.id.bottom_navigation)
         bottomNavigation.selectedItemId = R.id.nav_home
         bottomNavigation.setOnItemSelectedListener { item ->
-            when (item.itemId) {
-                R.id.nav_home -> true
-                R.id.nav_map -> {
-                    startActivity(Intent(this, OpenStreetMapsActivity::class.java))
-                    true
-                }
-                R.id.nav_list -> {
-                    startActivity(Intent(this, MainActivity2::class.java))
-                    true
-                }
-                R.id.nav_settings -> {
-                    startActivity(Intent(this, SettingsActivity::class.java))
-                    true
-                }
-                else -> false
-            }
+            handleNavigation(item.itemId)
+            true
         }
     }
 
@@ -212,5 +240,13 @@ class MainActivity : AppCompatActivity() {
         
         // Update navigation selection
         findViewById<BottomNavigationView>(R.id.bottom_navigation).selectedItemId = R.id.nav_home
+    }
+
+    override fun onBackPressed() {
+        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+            drawerLayout.closeDrawer(GravityCompat.START)
+        } else {
+            super.onBackPressed()
+        }
     }
 }
