@@ -2,12 +2,17 @@ package com.example.kotlin_project_1
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
 import android.location.Location
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -23,6 +28,7 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
@@ -126,22 +132,51 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun showRecycleDialog(bin: RecyclingBin) {
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_recycle_bin, null)
+        val dialog = AlertDialog.Builder(requireContext(), androidx.appcompat.R.style.Theme_AppCompat_Light_Dialog_Alert)
+            .setView(dialogView)
+            .create()
+
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        val emoji = when (bin.type) {
+            BinType.PAPER -> "📄"
+            BinType.GLASS -> "🫙"
+            BinType.PLASTIC -> "🥤"
+            BinType.ORGANIC -> "🍏"
+            BinType.BATTERY -> "🔋"
+            BinType.E_WASTE -> "💻"
+        }
+
+        dialogView.findViewById<TextView>(R.id.tvBinEmoji).text = emoji
+        dialogView.findViewById<TextView>(R.id.tvBinTitle).text = "${bin.type.name.lowercase().capitalize()} Bin"
+        dialogView.findViewById<TextView>(R.id.tvBinAddress).text = bin.address
         val points = rewardManager.getPointsForBin(bin.type)
-        AlertDialog.Builder(requireContext())
-            .setTitle("Recycle here?")
-            .setMessage("Recycling this ${bin.type} bin will earn you $points points!")
-            .setPositiveButton("Recycle") { _, _ ->
-                rewardManager.updatePoints(bin.type) { earned, total, needed ->
+        dialogView.findViewById<TextView>(R.id.tvPointsValue).text = "+$points Points"
+
+        dialogView.findViewById<Button>(R.id.btnRecycle).setOnClickListener {
+            rewardManager.updatePoints(
+                bin.type,
+                onComplete = { earned, total, needed ->
                     val message = if (needed > 0) {
                         "Recycled! Earned $earned pts. Total: $total. $needed more for next level!"
                     } else {
                         "Recycled! Earned $earned pts. Total: $total. Max level reached!"
                     }
                     Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                },
+                onError = { error ->
+                    Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
                 }
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+            )
+            dialog.dismiss()
+        }
+
+        dialogView.findViewById<TextView>(R.id.btnCancel).setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 
     private fun showQRCodeDialog() {
@@ -166,21 +201,34 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private fun addRecyclingMarkers() {
         CampusData.exampleBins.forEach { bin ->
             val position = LatLng(bin.latitude, bin.longitude)
-            val markerColor = when (bin.type) {
-                BinType.PAPER -> BitmapDescriptorFactory.HUE_BLUE
-                BinType.GLASS -> BitmapDescriptorFactory.HUE_GREEN
-                BinType.PLASTIC -> BitmapDescriptorFactory.HUE_YELLOW
-                BinType.ORGANIC -> BitmapDescriptorFactory.HUE_ORANGE
-                BinType.BATTERY, BinType.E_WASTE -> BitmapDescriptorFactory.HUE_RED
+            val emoji = when (bin.type) {
+                BinType.PAPER -> "📄"
+                BinType.GLASS -> "🫙"
+                BinType.PLASTIC -> "🥤"
+                BinType.ORGANIC -> "🍏"
+                BinType.BATTERY -> "🔋"
+                BinType.E_WASTE -> "💻"
             }
 
             mMap.addMarker(
                 MarkerOptions()
                     .position(position)
                     .title("${bin.type} Bin (+${rewardManager.getPointsForBin(bin.type)} pts)")
-                    .icon(BitmapDescriptorFactory.defaultMarker(markerColor))
+                    .icon(getDescriptorFromEmoji(emoji))
             )
         }
+    }
+
+    private fun getDescriptorFromEmoji(emoji: String): BitmapDescriptor {
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 80f
+        }
+        val width = paint.measureText(emoji).toInt()
+        val height = (paint.descent() - paint.ascent()).toInt()
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        canvas.drawText(emoji, 0f, -paint.ascent(), paint)
+        return BitmapDescriptorFactory.fromBitmap(bitmap)
     }
 
     private fun checkLocationPermissions() {

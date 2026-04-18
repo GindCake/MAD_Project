@@ -14,6 +14,12 @@ data class UserTier(
     val levelNumber: Int
 )
 
+data class EcoImpact(
+    val co2SavedKg: Double,
+    val treesEquivalent: Double,
+    val plasticSavedGrams: Int
+)
+
 class RewardManager {
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
@@ -36,10 +42,30 @@ class RewardManager {
         }
     }
 
-    fun updatePoints(binType: BinType, onComplete: (pointsEarned: Int, newTotal: Int, pointsToNext: Int) -> Unit) {
-        val userId = auth.currentUser?.uid ?: return
-        val pointsToAdd = getPointsForBin(binType)
+    /**
+     * Calculates environmental impact based on total points.
+     * Roughly: 1 pt = 0.5kg CO2 saved, 50 pts = 1 tree equivalent.
+     */
+    fun calculateEcoImpact(points: Int): EcoImpact {
+        return EcoImpact(
+            co2SavedKg = points * 0.5,
+            treesEquivalent = points / 50.0,
+            plasticSavedGrams = points * 20
+        )
+    }
 
+    fun updatePoints(
+        binType: BinType, 
+        onComplete: (pointsEarned: Int, newTotal: Int, pointsToNext: Int) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        val userId = auth.currentUser?.uid
+        if (userId == null) {
+            onError("You must be signed in to earn points!")
+            return
+        }
+
+        val pointsToAdd = getPointsForBin(binType)
         val userRef = db.collection("users").document(userId)
         
         db.runTransaction { transaction ->
@@ -58,13 +84,16 @@ class RewardManager {
             val data = mapOf(
                 "totalPoints" to newPoints,
                 "level" to tier.name,
-                "discount" to "${tier.discount} Discount"
+                "discount" to "${tier.discount} Discount",
+                "lastUpdated" to com.google.firebase.Timestamp.now()
             )
             
             transaction.set(userRef, data, SetOptions.merge())
             Triple(pointsToAdd, newPoints, pointsToNext)
         }.addOnSuccessListener { result ->
             onComplete(result.first, result.second, result.third)
+        }.addOnFailureListener { e ->
+            onError("Update failed: ${e.localizedMessage}")
         }
     }
 

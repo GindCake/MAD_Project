@@ -28,6 +28,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.google.android.material.card.MaterialCardView
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
@@ -141,11 +142,12 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        findViewById<Button>(R.id.btnMap).setOnClickListener {
+        // Quick Actions Grid Click Listeners
+        findViewById<MaterialCardView>(R.id.cardMap).setOnClickListener {
             startActivity(Intent(this, OpenStreetMapsActivity::class.java))
         }
 
-        findViewById<Button>(R.id.btnWeather).setOnClickListener {
+        findViewById<MaterialCardView>(R.id.cardWeather).setOnClickListener {
             startActivity(Intent(this, WeatherActivity::class.java))
         }
 

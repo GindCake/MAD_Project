@@ -15,7 +15,9 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
 import android.preference.PreferenceManager
-import android.util.Log
+import android.view.LayoutInflater
+import android.widget.Button
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -114,27 +116,34 @@ class OpenStreetMapsActivity : AppCompatActivity(), LocationListener {
             marker.title = "${bin.type} Bin: +$points points"
             marker.snippet = bin.address
             
-            val color = when (bin.type) {
-                BinType.PAPER -> Color.BLUE
-                BinType.GLASS -> Color.GREEN
-                BinType.PLASTIC -> Color.YELLOW
-                BinType.ORGANIC -> Color.rgb(139, 69, 19)
-                BinType.BATTERY, BinType.E_WASTE -> Color.RED
+            val emoji = when (bin.type) {
+                BinType.PAPER -> "📄"
+                BinType.GLASS -> "🫙"
+                BinType.PLASTIC -> "🥤"
+                BinType.ORGANIC -> "🍏"
+                BinType.BATTERY -> "🔋"
+                BinType.E_WASTE -> "💻"
             }
-            marker.icon = createColoredMarkerIcon(color)
+            marker.icon = createEmojiMarkerIcon(emoji)
+            
+            marker.setOnMarkerClickListener { _, _ ->
+                showRecycleDialog(bin)
+                true
+            }
+            
             map.overlays.add(marker)
         }
     }
 
-    private fun createColoredMarkerIcon(color: Int): Drawable {
-        val size = 60
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    private fun createEmojiMarkerIcon(emoji: String): Drawable {
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 60f
+        }
+        val width = paint.measureText(emoji).toInt()
+        val height = (paint.descent() - paint.ascent()).toInt()
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val paint = Paint()
-        paint.color = Color.WHITE
-        canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
-        paint.color = color
-        canvas.drawCircle(size / 2f, size / 2f, size / 2.5f, paint)
+        canvas.drawText(emoji, 0f, -paint.ascent(), paint)
         return BitmapDrawable(resources, bitmap)
     }
 
@@ -192,22 +201,50 @@ class OpenStreetMapsActivity : AppCompatActivity(), LocationListener {
     }
 
     private fun showRecycleDialog(bin: RecyclingBin) {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_recycle_bin, null)
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .create()
+
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        val emoji = when (bin.type) {
+            BinType.PAPER -> "📄"
+            BinType.GLASS -> "🫙"
+            BinType.PLASTIC -> "🥤"
+            BinType.ORGANIC -> "🍏"
+            BinType.BATTERY -> "🔋"
+            BinType.E_WASTE -> "💻"
+        }
+
+        dialogView.findViewById<TextView>(R.id.tvBinEmoji).text = emoji
+        dialogView.findViewById<TextView>(R.id.tvBinTitle).text = "${bin.type.name.lowercase().capitalize()} Bin"
+        dialogView.findViewById<TextView>(R.id.tvBinAddress).text = bin.address
         val points = rewardManager.getPointsForBin(bin.type)
-        AlertDialog.Builder(this)
-            .setTitle("Recycle here?")
-            .setMessage("You are near a ${bin.type} bin.\n\nRecycling this will earn you $points points!")
-            .setPositiveButton("Recycle") { _, _ ->
-                rewardManager.updatePoints(bin.type) { earned, total, needed ->
+        dialogView.findViewById<TextView>(R.id.tvPointsValue).text = "+$points Points"
+
+        dialogView.findViewById<Button>(R.id.btnRecycle).setOnClickListener {
+            rewardManager.updatePoints(bin.type, 
+                onComplete = { earned, total, needed ->
                     val message = if (needed > 0) {
                         "Recycled! You just earned $earned points. Total: $total. You need $needed more for next level!"
                     } else {
                         "Recycled! You just earned $earned points. Total: $total. You reached the maximum level!"
                     }
                     Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                },
+                onError = { error ->
+                    Toast.makeText(this, error, Toast.LENGTH_SHORT).show()
                 }
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+            )
+            dialog.dismiss()
+        }
+
+        dialogView.findViewById<TextView>(R.id.btnCancel).setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 
     private fun setupNavigation() {
