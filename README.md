@@ -1,6 +1,8 @@
-# Eco-Conscious Recycling & Weather Tracker
+# Eco-Conscious: Recycling & Weather Tracker
 
-An Android application designed to promote environmental awareness through recycling rewards and local weather tracking. The app helps users locate recycling bins, earn points for recycling, and stay updated with weather conditions.
+Eco-Conscious is an Android application dedicated to urban environmental sustainability and proactive waste management. The platform enables users to discover recycling facilities through an interactive map, track their ecological contribution via a sophisticated rewards system, and stay informed with real-time weather data to optimize their environmental activities. By gamifying the recycling process with user levels and QR-based rewards, Eco-Conscious transforms individual actions into a collective effort for a cleaner community.
+
+Compared to standard recycling locators or municipal waste apps, Eco-Conscious offers a more integrated and engaging experience. While many apps provide static data on bin locations, Eco-Conscious utilizes real-time proximity detection and location-based triggers to actively encourage participation. By incorporating localized weather tracking, it addresses the practical needs of users planning outdoor recycling trips, making it a comprehensive tool for environmental awareness rather than a simple directory. The inclusion of status levels and milestone tracking fosters long-term commitment, distinguishing it as a community-centric platform for sustainable living.
 
 ## Features
 

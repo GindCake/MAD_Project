@@ -1,24 +1,15 @@
 package com.example.kotlin_project_1
 
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.util.Log
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
-
-data class UserTier(
-    val name: String,
-    val discount: String,
-    val minPoints: Int,
-    val maxPoints: Int,
-    val levelNumber: Int
-)
-
-data class EcoImpact(
-    val co2SavedKg: Double,
-    val treesEquivalent: Double,
-    val plasticSavedGrams: Int
-)
+import java.util.Calendar
 
 class RewardManager {
     private val db = FirebaseFirestore.getInstance()
@@ -42,37 +33,77 @@ class RewardManager {
         }
     }
 
-    /**
-     * Calculates environmental impact based on total points.
-     * Roughly: 1 pt = 0.5kg CO2 saved, 50 pts = 1 tree equivalent.
-     */
-    fun calculateEcoImpact(points: Int): EcoImpact {
-        return EcoImpact(
-            co2SavedKg = points * 0.5,
-            treesEquivalent = points / 50.0,
-            plasticSavedGrams = points * 20
-        )
+    fun generateQRCodePlaceholder(tierName: String): Bitmap {
+        val size = 512
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        canvas.drawColor(Color.WHITE)
+        
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.BLACK
+            textSize = 40f
+            textAlign = Paint.Align.CENTER
+        }
+        
+        for (i in 0 until 8) {
+            for (j in 0 until 8) {
+                if ((i + j) % 2 == 0) {
+                    canvas.drawRect(
+                        (i * size / 8).toFloat(),
+                        (j * size / 8).toFloat(),
+                        ((i + 1) * size / 8).toFloat(),
+                        ((j + 1) * size / 8).toFloat(),
+                        paint
+                    )
+                }
+            }
+        }
+        
+        paint.color = Color.BLUE
+        canvas.drawText(tierName, (size / 2).toFloat(), (size / 2).toFloat(), paint)
+        canvas.drawText("REWARD QR", (size / 2).toFloat(), (size / 2 + 50).toFloat(), paint)
+        
+        return bitmap
     }
 
     fun updatePoints(
         binType: BinType, 
-        onComplete: (pointsEarned: Int, newTotal: Int, pointsToNext: Int) -> Unit,
+        onComplete: (pointsEarned: Int, newTotal: Int, pointsToNext: Int, streak: Int, isDoubled: Boolean) -> Unit,
         onError: (String) -> Unit
     ) {
-        val userId = auth.currentUser?.uid
-        if (userId == null) {
-            onError("You must be signed in to earn points!")
+        val user = auth.currentUser
+        if (user == null) {
+            onError("Authentication error: Please sign in again.")
             return
         }
 
-        val pointsToAdd = getPointsForBin(binType)
+        val userId = user.uid
         val userRef = db.collection("users").document(userId)
         
-        db.runTransaction { transaction ->
-            val snapshot = transaction.get(userRef)
+        userRef.get().addOnSuccessListener { snapshot ->
             val currentPoints = snapshot.getLong("totalPoints")?.toInt() ?: 0
+            val lastRecycleTimestamp = snapshot.getTimestamp("lastRecycleDate")
+            var currentStreak = snapshot.getLong("streakCount")?.toInt() ?: 0
+            val now = Timestamp.now()
+
+            var isDoubled = false
+            if (lastRecycleTimestamp != null) {
+                if (isConsecutiveDay(lastRecycleTimestamp, now)) {
+                    currentStreak++
+                } else if (!isSameDay(lastRecycleTimestamp, now)) {
+                    currentStreak = 1
+                }
+            } else {
+                currentStreak = 1
+            }
+
+            var pointsToAdd = getPointsForBin(binType)
+            if (currentStreak >= 5) {
+                pointsToAdd *= 2
+                isDoubled = true
+            }
+
             val newPoints = currentPoints + pointsToAdd
-            
             val tier = calculateUserTier(newPoints)
             
             val pointsToNext = when(tier.levelNumber) {
@@ -81,38 +112,41 @@ class RewardManager {
                 else -> 0
             }
             
-            val data = mapOf(
+            val data = mutableMapOf(
                 "totalPoints" to newPoints,
                 "level" to tier.name,
-                "discount" to "${tier.discount} Discount",
-                "lastUpdated" to com.google.firebase.Timestamp.now()
+                "lastRecycleDate" to now,
+                "streakCount" to currentStreak,
+                "displayName" to (user.displayName ?: user.email?.substringBefore("@") ?: "User"),
+                "email" to user.email
             )
             
-            transaction.set(userRef, data, SetOptions.merge())
-            Triple(pointsToAdd, newPoints, pointsToNext)
-        }.addOnSuccessListener { result ->
-            onComplete(result.first, result.second, result.third)
+            userRef.set(data, SetOptions.merge())
+                .addOnSuccessListener {
+                    onComplete(pointsToAdd, newPoints, pointsToNext, currentStreak, isDoubled)
+                }
+                .addOnFailureListener { e ->
+                    Log.e("RewardManager", "Update failed", e)
+                    onError("Update failed: ${e.localizedMessage}")
+                }
         }.addOnFailureListener { e ->
-            onError("Update failed: ${e.localizedMessage}")
+            Log.e("RewardManager", "Get failed", e)
+            onError("Data access failed: ${e.localizedMessage}")
         }
     }
 
-    fun generateQRCodePlaceholder(levelName: String): Bitmap {
-        val size = 512
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val color = when (levelName) {
-            "Eco-Conscious" -> Color.parseColor("#4CAF50")
-            "Eco-Warrior" -> Color.parseColor("#2196F3")
-            "Planet Guardian" -> Color.parseColor("#FF9800")
-            else -> Color.BLACK
-        }
-        
-        for (x in 0 until size) {
-            for (y in 0 until size) {
-                val isPattern = (x / 32 + y / 32) % 2 == 0
-                bitmap.setPixel(x, y, if (isPattern) color else Color.WHITE)
-            }
-        }
-        return bitmap
+    private fun isConsecutiveDay(last: Timestamp, current: Timestamp): Boolean {
+        val lastCal = Calendar.getInstance().apply { time = last.toDate() }
+        val currentCal = Calendar.getInstance().apply { time = current.toDate() }
+        lastCal.add(Calendar.DAY_OF_YEAR, 1)
+        return lastCal.get(Calendar.YEAR) == currentCal.get(Calendar.YEAR) &&
+               lastCal.get(Calendar.DAY_OF_YEAR) == currentCal.get(Calendar.DAY_OF_YEAR)
+    }
+
+    private fun isSameDay(last: Timestamp, current: Timestamp): Boolean {
+        val lastCal = Calendar.getInstance().apply { time = last.toDate() }
+        val currentCal = Calendar.getInstance().apply { time = current.toDate() }
+        return lastCal.get(Calendar.YEAR) == currentCal.get(Calendar.YEAR) &&
+               lastCal.get(Calendar.DAY_OF_YEAR) == currentCal.get(Calendar.DAY_OF_YEAR)
     }
 }

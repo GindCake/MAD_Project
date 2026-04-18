@@ -157,13 +157,17 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         dialogView.findViewById<Button>(R.id.btnRecycle).setOnClickListener {
             rewardManager.updatePoints(
                 bin.type,
-                onComplete = { earned, total, needed ->
-                    val message = if (needed > 0) {
-                        "Recycled! Earned $earned pts. Total: $total. $needed more for next level!"
-                    } else {
-                        "Recycled! Earned $earned pts. Total: $total. Max level reached!"
+                onComplete = { earned, total, needed, streak, isDoubled ->
+                    var message = "Recycled! Earned $earned pts (Streak: $streak)."
+                    if (isDoubled) {
+                        message = "🔥 5-DAY STREAK! Points doubled: $earned pts earned!"
                     }
-                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    if (needed > 0) {
+                        message += "\nTotal: $total. $needed more for next level!"
+                    } else {
+                        message += "\nTotal: $total. Max level reached!"
+                    }
+                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
                 },
                 onError = { error ->
                     Toast.makeText(context, error, Toast.LENGTH_SHORT).show()

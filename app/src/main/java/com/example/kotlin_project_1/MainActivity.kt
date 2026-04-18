@@ -34,6 +34,9 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.auth
 import com.google.firebase.Firebase
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
 
 class MainActivity : AppCompatActivity() {
     private val tag = "btaMainActivity"
@@ -41,6 +44,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var toggle: ActionBarDrawerToggle
     private lateinit var auth: FirebaseAuth
+    private lateinit var db: FirebaseFirestore
     private lateinit var googleSignInClient: GoogleSignInClient
 
     private val googleSignInLauncher =
@@ -80,8 +84,10 @@ class MainActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
         
-        // Firebase Auth
+        // Firebase Auth & Firestore
         auth = Firebase.auth
+        db = FirebaseFirestore.getInstance()
+        
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(getString(R.string.default_web_client_id))
             .requestEmail()
@@ -151,6 +157,11 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, WeatherActivity::class.java))
         }
 
+        // Ranking Card Click Listener
+        findViewById<MaterialCardView>(R.id.cardRanking).setOnClickListener {
+            startActivity(Intent(this, RankingActivity::class.java))
+        }
+
         setupBottomNavigation()
         updateUI()
 
@@ -177,8 +188,18 @@ class MainActivity : AppCompatActivity() {
         auth.signInWithCredential(credential)
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
-                    Log.d(tag, "signInWithCredential:success")
-                    updateUI()
+                    val user = auth.currentUser
+                    user?.let {
+                        val userRef = db.collection("users").document(it.uid)
+                        val data = mapOf(
+                            "displayName" to it.displayName,
+                            "email" to it.email
+                        )
+                        // Use merge to not overwrite points if they already exist
+                        userRef.set(data, SetOptions.merge()).addOnSuccessListener { 
+                            updateUI() 
+                        }
+                    }
                 } else {
                     Log.w(tag, "signInWithCredential:failure", task.exception)
                     showToast("Authentication Failed.")
@@ -196,15 +217,66 @@ class MainActivity : AppCompatActivity() {
     private fun updateUI() {
         val user = auth.currentUser
         val tvUserStatus: TextView = findViewById(R.id.tvUserStatus)
+        val tvStreakCount: TextView = findViewById(R.id.tvStreakCount)
+        val tvUniversityRank: TextView = findViewById(R.id.tvUniversityRank)
+
         if (user != null) {
             tvUserStatus.text = getString(R.string.logged_in_as, user.email)
             findViewById<Button>(R.id.btnGoogleSignIn).visibility = android.view.View.GONE
             findViewById<Button>(R.id.btnSignOut).visibility = android.view.View.VISIBLE
+            
+            // Fetch User Data for Streak and Rank
+            db.collection("users").document(user.uid).get().addOnSuccessListener { document ->
+                if (document.exists()) {
+                    val streak = document.getLong("streakCount") ?: 0
+                    tvStreakCount.text = "$streak Days"
+                    calculateRank(user.uid)
+                } else {
+                    tvStreakCount.text = "0 Days"
+                    tvUniversityRank.text = "--"
+                    // Initialize document if it doesn't exist
+                    val data = mapOf(
+                        "totalPoints" to 0,
+                        "level" to "Eco-Conscious",
+                        "streakCount" to 0,
+                        "displayName" to user.displayName,
+                        "email" to user.email
+                    )
+                    db.collection("users").document(user.uid).set(data)
+                }
+            }
         } else {
             tvUserStatus.text = getString(R.string.not_logged_in)
+            tvStreakCount.text = "0 Days"
+            tvUniversityRank.text = "--"
             findViewById<Button>(R.id.btnGoogleSignIn).visibility = android.view.View.VISIBLE
             findViewById<Button>(R.id.btnSignOut).visibility = android.view.View.GONE
         }
+    }
+
+    private fun calculateRank(userId: String) {
+        db.collection("users")
+            .orderBy("totalPoints", Query.Direction.DESCENDING)
+            .get()
+            .addOnSuccessListener { documents ->
+                var rank = 1
+                var found = false
+                for (doc in documents) {
+                    if (doc.id == userId) {
+                        findViewById<TextView>(R.id.tvUniversityRank).text = "#$rank"
+                        found = true
+                        break
+                    }
+                    rank++
+                }
+                if (!found) {
+                    findViewById<TextView>(R.id.tvUniversityRank).text = "--"
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e(tag, "Error calculating rank", e)
+                findViewById<TextView>(R.id.tvUniversityRank).text = "Error"
+            }
     }
 
     private fun handleNavigation(itemId: Int) {
@@ -252,5 +324,6 @@ class MainActivity : AppCompatActivity() {
         val hasPermission = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
         switchLocation.isChecked = hasPermission
         findViewById<BottomNavigationView>(R.id.bottom_navigation).selectedItemId = R.id.nav_home
+        updateUI()
     }
 }

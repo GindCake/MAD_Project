@@ -225,11 +225,16 @@ class OpenStreetMapsActivity : AppCompatActivity(), LocationListener {
 
         dialogView.findViewById<Button>(R.id.btnRecycle).setOnClickListener {
             rewardManager.updatePoints(bin.type, 
-                onComplete = { earned, total, needed ->
-                    val message = if (needed > 0) {
+                onComplete = { earned, total, needed, streak, isDoubled ->
+                    var message = if (needed > 0) {
                         "Recycled! You just earned $earned points. Total: $total. You need $needed more for next level!"
                     } else {
                         "Recycled! You just earned $earned points. Total: $total. You reached the maximum level!"
+                    }
+                    if (isDoubled) {
+                        message += " Double points applied (5+ day streak)!"
+                    } else if (streak > 1) {
+                        message += " Day $streak streak!"
                     }
                     Toast.makeText(this, message, Toast.LENGTH_LONG).show()
                 },

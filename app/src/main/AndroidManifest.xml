@@ -23,6 +23,10 @@
             android:value="${MAPS_API_KEY}" />
 
         <activity
+            android:name=".RankingActivity"
+            android:exported="false"
+            android:label="Global Ranking" />
+        <activity
             android:name=".WeatherActivity"
             android:exported="false" />
         <activity
