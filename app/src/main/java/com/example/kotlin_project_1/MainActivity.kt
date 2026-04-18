@@ -29,10 +29,10 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.navigation.NavigationView
-import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.auth
+import com.google.firebase.Firebase
 
 class MainActivity : AppCompatActivity() {
     private val tag = "btaMainActivity"
@@ -196,12 +196,12 @@ class MainActivity : AppCompatActivity() {
         val tvUserStatus: TextView = findViewById(R.id.tvUserStatus)
         if (user != null) {
             tvUserStatus.text = getString(R.string.logged_in_as, user.email)
-            findViewById<Button>(R.id.btnGoogleSignIn).visibility = Button.GONE
-            findViewById<Button>(R.id.btnSignOut).visibility = Button.VISIBLE
+            findViewById<Button>(R.id.btnGoogleSignIn).visibility = android.view.View.GONE
+            findViewById<Button>(R.id.btnSignOut).visibility = android.view.View.VISIBLE
         } else {
             tvUserStatus.text = getString(R.string.not_logged_in)
-            findViewById<Button>(R.id.btnGoogleSignIn).visibility = Button.VISIBLE
-            findViewById<Button>(R.id.btnSignOut).visibility = Button.GONE
+            findViewById<Button>(R.id.btnGoogleSignIn).visibility = android.view.View.VISIBLE
+            findViewById<Button>(R.id.btnSignOut).visibility = android.view.View.GONE
         }
     }
 

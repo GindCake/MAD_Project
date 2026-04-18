@@ -11,11 +11,11 @@ import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.bottomnavigation.BottomNavigationView
 
 class MainActivity3 : AppCompatActivity() {
-    private val TAG = "btaMainActivity3"
+    private val tag = "btaMainActivity3"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d(TAG, "onCreate: Activity 3 created")
+        Log.d(tag, "onCreate: Activity 3 created")
         enableEdgeToEdge()
         setContentView(R.layout.activity_main3)
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
@@ -33,7 +33,7 @@ class MainActivity3 : AppCompatActivity() {
 
     private fun setupNavigation() {
         val bottomNavigation: BottomNavigationView = findViewById(R.id.bottom_navigation)
-        bottomNavigation.selectedItemId = R.id.nav_list // Since we came from list
+        bottomNavigation.selectedItemId = R.id.nav_list 
         bottomNavigation.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_home -> {
@@ -55,5 +55,10 @@ class MainActivity3 : AppCompatActivity() {
                 else -> false
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        findViewById<BottomNavigationView>(R.id.bottom_navigation).selectedItemId = R.id.nav_list
     }
 }

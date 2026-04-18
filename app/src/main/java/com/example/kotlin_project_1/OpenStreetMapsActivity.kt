@@ -16,8 +16,10 @@ import android.location.LocationManager
 import android.os.Bundle
 import android.preference.PreferenceManager
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
@@ -33,23 +35,23 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
-import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 class OpenStreetMapsActivity : AppCompatActivity(), LocationListener {
-    private val TAG = "EcoRouteMap"
-    private val FILE_NAME = "location_data.txt"
+    private val tag = "EcoRouteMap"
     private lateinit var map: MapView
     private lateinit var locationOverlay: MyLocationNewOverlay
     private lateinit var locationManager: LocationManager
     private var isRecording = false
     private lateinit var database: AppDatabase
+    private val rewardManager = RewardManager()
+    
+    private var lastBinIdTriggered: String? = null
 
-    // UPM ETSI Informática Coordinates
-    private val UPM_LAT = 40.4523
-    private val UPM_LON = -3.7261
+    private val upmLat = 40.4523
+    private val upmLon = -3.7261
 
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
@@ -76,7 +78,6 @@ class OpenStreetMapsActivity : AppCompatActivity(), LocationListener {
         val switchRecord: SwitchCompat = findViewById(R.id.switchRecord)
         switchRecord.setOnCheckedChangeListener { _, isChecked ->
             isRecording = isChecked
-            if (isRecording) startLocationUpdates() else stopLocationUpdates()
         }
 
         checkPermissions()
@@ -92,15 +93,11 @@ class OpenStreetMapsActivity : AppCompatActivity(), LocationListener {
     private fun initMap() {
         val mapController = map.controller
         mapController.setZoom(18.5)
-        
-        // Always center on UPM initially
-        val startPoint = GeoPoint(UPM_LAT, UPM_LON)
+        val startPoint = GeoPoint(upmLat, upmLon)
         mapController.setCenter(startPoint)
 
         locationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(this), map)
         locationOverlay.enableMyLocation()
-        // Disable "FollowLocation" by default so it doesn't jump to the USA
-        locationOverlay.disableFollowLocation() 
         map.overlays.add(locationOverlay)
 
         addRecyclingMarkers()
@@ -112,7 +109,9 @@ class OpenStreetMapsActivity : AppCompatActivity(), LocationListener {
             val marker = Marker(map)
             marker.position = GeoPoint(bin.latitude, bin.longitude)
             marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-            marker.title = "${bin.type} Bin"
+            
+            val points = rewardManager.getPointsForBin(bin.type)
+            marker.title = "${bin.type} Bin: +$points points"
             marker.snippet = bin.address
             
             val color = when (bin.type) {
@@ -120,7 +119,7 @@ class OpenStreetMapsActivity : AppCompatActivity(), LocationListener {
                 BinType.GLASS -> Color.GREEN
                 BinType.PLASTIC -> Color.YELLOW
                 BinType.ORGANIC -> Color.rgb(139, 69, 19)
-                BinType.E_WASTE -> Color.RED
+                BinType.BATTERY, BinType.E_WASTE -> Color.RED
             }
             marker.icon = createColoredMarkerIcon(color)
             map.overlays.add(marker)
@@ -151,21 +150,18 @@ class OpenStreetMapsActivity : AppCompatActivity(), LocationListener {
     private fun startLocationUpdates() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2000L, 2f, this)
-            // Only follow location when explicitly recording
-            locationOverlay.enableFollowLocation()
         }
     }
 
     private fun stopLocationUpdates() {
         locationManager.removeUpdates(this)
-        locationOverlay.disableFollowLocation()
     }
 
     override fun onLocationChanged(location: Location) {
+        checkProximity(location)
         if (isRecording) {
             val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(location.time))
             val userId = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE).getString("userId", "User") ?: "User"
-
             lifecycleScope.launch {
                 database.locationDao().insert(LocationEntity(
                     latitude = location.latitude, longitude = location.longitude,
@@ -173,6 +169,45 @@ class OpenStreetMapsActivity : AppCompatActivity(), LocationListener {
                 ))
             }
         }
+    }
+
+    private fun checkProximity(userLocation: Location) {
+        CampusData.exampleBins.forEach { bin ->
+            val results = FloatArray(1)
+            Location.distanceBetween(
+                userLocation.latitude, userLocation.longitude,
+                bin.latitude, bin.longitude, results
+            )
+            val distanceInMeters = results[0]
+
+            if (distanceInMeters <= 10.0) {
+                if (lastBinIdTriggered != bin.id) {
+                    lastBinIdTriggered = bin.id
+                    showRecycleDialog(bin)
+                }
+                return 
+            }
+        }
+        lastBinIdTriggered = null
+    }
+
+    private fun showRecycleDialog(bin: RecyclingBin) {
+        val points = rewardManager.getPointsForBin(bin.type)
+        AlertDialog.Builder(this)
+            .setTitle("Recycle here?")
+            .setMessage("You are near a ${bin.type} bin.\n\nRecycling this will earn you $points points!")
+            .setPositiveButton("Recycle") { _, _ ->
+                rewardManager.updatePoints(bin.type) { earned, total, needed ->
+                    val message = if (needed > 0) {
+                        "Recycled! You just earned $earned points. Total: $total. You need $needed more for next level!"
+                    } else {
+                        "Recycled! You just earned $earned points. Total: $total. You reached the maximum level!"
+                    }
+                    Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun setupNavigation() {
@@ -189,6 +224,15 @@ class OpenStreetMapsActivity : AppCompatActivity(), LocationListener {
         }
     }
 
-    override fun onResume() { super.onResume(); map.onResume() }
-    override fun onPause() { super.onPause(); map.onPause() }
+    override fun onResume() { 
+        super.onResume()
+        map.onResume()
+        startLocationUpdates()
+    }
+    
+    override fun onPause() { 
+        super.onPause()
+        map.onPause()
+        stopLocationUpdates()
+    }
 }

@@ -1,5 +1,6 @@
 package com.example.kotlin_project_1
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.view.Gravity
@@ -10,6 +11,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -60,6 +62,7 @@ class WeatherActivity : AppCompatActivity() {
 
         fetchWeather(currentLat, currentLon)
         fetchForecast(currentLat, currentLon)
+        setupNavigation()
     }
 
     private fun fetchWeather(lat: Double, lon: Double) {
@@ -164,5 +167,30 @@ class WeatherActivity : AppCompatActivity() {
         tv.setPadding(8, 8, 8, 8)
         tv.textSize = 12f
         return tv
+    }
+
+    private fun setupNavigation() {
+        val bottomNavigation: BottomNavigationView = findViewById(R.id.bottom_navigation)
+        bottomNavigation.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_home -> {
+                    startActivity(Intent(this, MainActivity::class.java))
+                    true
+                }
+                R.id.nav_map -> {
+                    startActivity(Intent(this, OpenStreetMapsActivity::class.java))
+                    true
+                }
+                R.id.nav_list -> {
+                    startActivity(Intent(this, MainActivity2::class.java))
+                    true
+                }
+                R.id.nav_settings -> {
+                    startActivity(Intent(this, SettingsActivity::class.java))
+                    true
+                }
+                else -> false
+            }
+        }
     }
 }

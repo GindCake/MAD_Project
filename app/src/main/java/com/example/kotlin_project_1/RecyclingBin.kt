@@ -1,7 +1,7 @@
 package com.example.kotlin_project_1
 
 enum class BinType {
-    PAPER, GLASS, PLASTIC, ORGANIC, E_WASTE
+    PAPER, GLASS, PLASTIC, ORGANIC, BATTERY, E_WASTE
 }
 
 data class RecyclingBin(
@@ -22,13 +22,13 @@ object CampusData {
         
         // ETSI Telecomunicación
         RecyclingBin("5", BinType.GLASS, 40.4528, -3.7258, "Near Teleco Entrance"),
-        RecyclingBin("6", BinType.E_WASTE, 40.4525, -3.7260, "Teleco Lab Area"),
+        RecyclingBin("6", BinType.BATTERY, 40.4525, -3.7260, "Teleco Lab Area"),
         RecyclingBin("7", BinType.PAPER, 40.4532, -3.7250, "Teleco Library Entrance"),
         RecyclingBin("8", BinType.PLASTIC, 40.4535, -3.7262, "Teleco Courtyard"),
         
         // General Campus areas
         RecyclingBin("9", BinType.ORGANIC, 40.4530, -3.7270, "Campus Cafeteria"),
-        RecyclingBin("10", BinType.E_WASTE, 40.4515, -3.7275, "Maintenance Building"),
+        RecyclingBin("10", BinType.BATTERY, 40.4515, -3.7275, "Maintenance Building"),
         RecyclingBin("11", BinType.PLASTIC, 40.4510, -3.7260, "Bus Stop Entrance"),
         RecyclingBin("12", BinType.PAPER, 40.4540, -3.7255, "Sports Area Entrance")
     )
