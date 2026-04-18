@@ -1,9 +1,71 @@
 # EcoRoute Madrid 🌍♻️
 
-##Repositories:
+## Repositories:
 -GitHub repository : https://github.com/GindCake/MAD_Project
+## WorkSpace:
+https://upm365.sharepoint.com/sites/KotlinProjectiliyan.alex/SitePages
+## Description:
+EcoRoute Madrid is a modern Android application designed to promote sustainability and reward eco-friendly habits within the university campus. The app encourages users to recycle by gamifying the experience through points, levels, and a global ranking system giving them a discount QR codes for the UPM Food Places.
 
-EcoRoute Madrid is a modern Android application designed to promote sustainability and reward eco-friendly habits within the university campus. The app encourages users to recycle by gamifying the experience through points, levels, and a global ranking system.
+## Screenshots & Navigation:
+<table style="width: 100%; border-collapse: collapse;">
+  <tr>
+    <td align="center" style="width: 33%; vertical-align: top;">
+      <img src="https://github.com/user-attachments/assets/446c604a-71da-46b0-b7ad-3acd068cdb7d" width="100%" />
+      <p><i>Home page not signed in</i></p>
+    </td>
+    <td align="center" style="width: 33%; vertical-align: top;">
+      <img src="https://github.com/user-attachments/assets/8eab5249-33b6-45c8-a4e0-da73a6532a6a" width="100%" />
+      <p><i>Google Authentication Window</i></p>
+    </td>
+    <td align="center" style="width: 33%; vertical-align: top;">
+      <img src="https://github.com/user-attachments/assets/a1093025-848c-44ae-bb3c-c3c5ce2dbf80" width="100%" />
+      <p><i>Home page with an account signed in</i></p>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" style="width: 33%; vertical-align: top;">
+      <img src="https://github.com/user-attachments/assets/ef2d33c2-c162-484f-82a0-ed23f15cc58b" width="100%" />
+      <p><i>Ranking Page by the recycled points</i></p>
+    </td>
+    <td align="center" style="width: 33%; vertical-align: top;">
+      <img src="https://github.com/user-attachments/assets/651ba6e9-a994-4c30-9267-e6a735c4adbd" width="100%" />
+      <p><i>Recycling Map with all the locations of the trashbins</i></p>
+    </td>
+    <td align="center" style="width: 33%; vertical-align: top;">
+      <img src="https://github.com/user-attachments/assets/5beb79ed-d7d4-4ec1-acf8-d53f810d9dc4" width="100%" />
+      <p><i>Recycle Bin Overview</i></p>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" style="width: 33%; vertical-align: top;">
+      <img src="https://github.com/user-attachments/assets/acc759cf-826b-4fdf-9ae8-027e14459ee7" width="100%" />
+      <p><i>Pop notiffication for the earned points</i></p>
+    </td>
+    <td align="center" style="width: 33%; vertical-align: top;">
+      <img src="https://github.com/user-attachments/assets/10052116-8640-43bb-bb7f-4fbffeefaf10" width="100%" />
+      <p><i>Profile Page</i></p>
+    </td>
+    <td align="center" style="width: 33%; vertical-align: top;">
+      <img src="https://github.com/user-attachments/assets/05f225f9-595c-49a1-ada9-da8e99d86091" width="100%" />
+      <p><i>Reward System Overview</i></p>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" style="width: 33%; vertical-align: top;">
+      <img src="https://github.com/user-attachments/assets/e9ccba4f-9404-4875-8edc-1bee6e3721eb" width="100%" />
+      <p><i>Weather Forecast</i></p>
+    </td>
+    <td align="center" style="width: 33%; vertical-align: top;">
+      <img src="https://github.com/user-attachments/assets/978cc736-a534-4ccd-93d6-715f5c23af43" width="100%" />
+      <p><i>Log in info list</i></p>
+    </td>
+    <td style="width: 33%;"></td> </tr>
+</table>
+
+## Demo Video:
+https://upm365-my.sharepoint.com/personal/iliyan_dimitrov_alumnos_upm_es/_layouts/15/stream.aspx?id=%2Fpersonal%2Filiyan%5Fdimitrov%5Falumnos%5Fupm%5Fes%2FDocuments%2FScreen%5Frecording%5F20260419%5F011546%2Ewebm&referrer=StreamWebApp%2EWeb&referrerScenario=AddressBarCopied%2Eview%2Eb37700d2%2D760e%2D47b4%2Db509%2D304e8323972c&isDarkMode=false
+
 
 ## 🚀 Key Features
 
