@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "988508018391",
+    "project_id": "ecoroutemadrid",
+    "storage_bucket": "ecoroutemadrid.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:988508018391:android:70f961d8dbcdfd0b1fc292",
+        "android_client_info": {
+          "package_name": "com.example.kotlin_project_1"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "988508018391-kuic1eieoqjrlom4n8mr8isputa83lec.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.kotlin_project_1",
+            "certificate_hash": "52e4c46a5cfbee8c9aecd28bc32c224c46167993"
+          }
+        },
+        {
+          "client_id": "988508018391-frk8595qtono5onrp7ividlh9vf99sbt.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDuByRv9PGmIF2M9-WasQ6K_DQuMj230fo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "988508018391-frk8595qtono5onrp7ividlh9vf99sbt.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

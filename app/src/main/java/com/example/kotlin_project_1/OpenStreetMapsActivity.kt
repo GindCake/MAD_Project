@@ -23,7 +23,9 @@ import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import kotlinx.coroutines.launch
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -37,39 +39,34 @@ import java.util.Date
 import java.util.Locale
 
 class OpenStreetMapsActivity : AppCompatActivity(), LocationListener {
-    private val TAG = "btaOpenStreetMap"
+    private val TAG = "EcoRouteMap"
     private val FILE_NAME = "location_data.txt"
     private lateinit var map: MapView
     private lateinit var locationOverlay: MyLocationNewOverlay
     private lateinit var locationManager: LocationManager
     private var isRecording = false
+    private lateinit var database: AppDatabase
+
+    // UPM ETSI Informática Coordinates
+    private val UPM_LAT = 40.4523
+    private val UPM_LON = -3.7261
 
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
                 permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
             ) {
-                Log.d(TAG, "Permissions granted")
                 initMap()
-            } else {
-                Log.e(TAG, "Permissions denied")
             }
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
         Configuration.getInstance().load(this, PreferenceManager.getDefaultSharedPreferences(this))
-        
         enableEdgeToEdge()
         setContentView(R.layout.activity_open_street_maps)
         
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
-
+        database = AppDatabase.getDatabase(this)
         map = findViewById(R.id.map)
         map.setTileSource(TileSourceFactory.MAPNIK)
         map.setMultiTouchControls(true)
@@ -79,101 +76,53 @@ class OpenStreetMapsActivity : AppCompatActivity(), LocationListener {
         val switchRecord: SwitchCompat = findViewById(R.id.switchRecord)
         switchRecord.setOnCheckedChangeListener { _, isChecked ->
             isRecording = isChecked
-            Log.d(TAG, "Recording status: $isRecording")
-            if (isRecording) {
-                startLocationUpdates()
-            } else {
-                stopLocationUpdates()
-            }
+            if (isRecording) startLocationUpdates() else stopLocationUpdates()
         }
 
         checkPermissions()
         setupNavigation()
-    }
 
-    private fun setupNavigation() {
-        val bottomNavigation: BottomNavigationView = findViewById(R.id.bottom_navigation)
-        bottomNavigation.selectedItemId = R.id.nav_map
-        bottomNavigation.setOnItemSelectedListener { item ->
-            when (item.itemId) {
-                R.id.nav_home -> {
-                    startActivity(Intent(this, MainActivity::class.java))
-                    true
-                }
-                R.id.nav_map -> true
-                R.id.nav_list -> {
-                    startActivity(Intent(this, MainActivity2::class.java))
-                    true
-                }
-                R.id.nav_settings -> {
-                    startActivity(Intent(this, SettingsActivity::class.java))
-                    true
-                }
-                else -> false
-            }
-        }
-    }
-
-    private fun checkPermissions() {
-        val permissionsToRequest = arrayOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        )
-
-        val missingPermissions = permissionsToRequest.filter {
-            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-        }
-
-        if (missingPermissions.isEmpty()) {
-            initMap()
-        } else {
-            requestPermissionLauncher.launch(missingPermissions.toTypedArray())
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+            insets
         }
     }
 
     private fun initMap() {
         val mapController = map.controller
-        mapController.setZoom(18.0)
+        mapController.setZoom(18.5)
         
-        // Center on ETSI Informática
-        val startPoint = GeoPoint(40.4523, -3.7261)
+        // Always center on UPM initially
+        val startPoint = GeoPoint(UPM_LAT, UPM_LON)
         mapController.setCenter(startPoint)
 
         locationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(this), map)
         locationOverlay.enableMyLocation()
-        locationOverlay.enableFollowLocation()
+        // Disable "FollowLocation" by default so it doesn't jump to the USA
+        locationOverlay.disableFollowLocation() 
         map.overlays.add(locationOverlay)
 
         addRecyclingMarkers()
-
         map.invalidate()
     }
 
     private fun addRecyclingMarkers() {
         CampusData.exampleBins.forEach { bin ->
-            val point = GeoPoint(bin.latitude, bin.longitude)
             val marker = Marker(map)
-            marker.position = point
+            marker.position = GeoPoint(bin.latitude, bin.longitude)
             marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
             marker.title = "${bin.type} Bin"
             marker.snippet = bin.address
             
-            // Generate custom colored icon
             val color = when (bin.type) {
                 BinType.PAPER -> Color.BLUE
                 BinType.GLASS -> Color.GREEN
                 BinType.PLASTIC -> Color.YELLOW
-                BinType.ORGANIC -> Color.rgb(139, 69, 19) // Brown
+                BinType.ORGANIC -> Color.rgb(139, 69, 19)
                 BinType.E_WASTE -> Color.RED
             }
-            
             marker.icon = createColoredMarkerIcon(color)
-            
-            marker.setOnMarkerClickListener { m, _ ->
-                m.showInfoWindow()
-                true
-            }
-
             map.overlays.add(marker)
         }
     }
@@ -183,66 +132,63 @@ class OpenStreetMapsActivity : AppCompatActivity(), LocationListener {
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val paint = Paint()
-        
-        // Draw outer circle (border)
         paint.color = Color.WHITE
-        paint.style = Paint.Style.FILL
         canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
-        
-        // Draw inner circle (the actual color)
         paint.color = color
         canvas.drawCircle(size / 2f, size / 2f, size / 2.5f, paint)
-        
         return BitmapDrawable(resources, bitmap)
+    }
+
+    private fun checkPermissions() {
+        val permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+        if (permissions.all { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED }) {
+            initMap()
+        } else {
+            requestPermissionLauncher.launch(permissions)
+        }
     }
 
     private fun startLocationUpdates() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000L, 5f, this)
-            Log.d(TAG, "Started location updates (5s, 5m)")
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2000L, 2f, this)
+            // Only follow location when explicitly recording
+            locationOverlay.enableFollowLocation()
         }
     }
 
     private fun stopLocationUpdates() {
         locationManager.removeUpdates(this)
-        Log.d(TAG, "Stopped location updates")
+        locationOverlay.disableFollowLocation()
     }
 
     override fun onLocationChanged(location: Location) {
         if (isRecording) {
-            val lat = String.format("%.4f", location.latitude)
-            val lon = String.format("%.4f", location.longitude)
-            val alt = location.altitude
             val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(location.time))
+            val userId = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE).getString("userId", "User") ?: "User"
 
-            val dataString = "Lat: $lat, Lon: $lon, Alt: $alt m, Time: $timestamp\n"
-            Log.d(TAG, "RECORDING - $dataString")
-            
-            saveDataToFile(dataString)
+            lifecycleScope.launch {
+                database.locationDao().insert(LocationEntity(
+                    latitude = location.latitude, longitude = location.longitude,
+                    altitude = location.altitude, timestamp = timestamp, userId = userId
+                ))
+            }
         }
     }
 
-    private fun saveDataToFile(data: String) {
-        try {
-            val fileOutputStream: FileOutputStream = openFileOutput(FILE_NAME, Context.MODE_APPEND)
-            fileOutputStream.write(data.toByteArray())
-            fileOutputStream.close()
-            Log.d(TAG, "Data saved to file: $FILE_NAME")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error saving data to file", e)
+    private fun setupNavigation() {
+        val bottomNavigation: BottomNavigationView = findViewById(R.id.bottom_navigation)
+        bottomNavigation.selectedItemId = R.id.nav_map
+        bottomNavigation.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_home -> { startActivity(Intent(this, MainActivity::class.java)); true }
+                R.id.nav_map -> true
+                R.id.nav_list -> { startActivity(Intent(this, MainActivity2::class.java)); true }
+                R.id.nav_settings -> { startActivity(Intent(this, SettingsActivity::class.java)); true }
+                else -> false
+            }
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        map.onResume()
-        if (isRecording) startLocationUpdates()
-        findViewById<BottomNavigationView>(R.id.bottom_navigation).selectedItemId = R.id.nav_map
-    }
-
-    override fun onPause() {
-        super.onPause()
-        map.onPause()
-        stopLocationUpdates()
-    }
+    override fun onResume() { super.onResume(); map.onResume() }
+    override fun onPause() { super.onPause(); map.onPause() }
 }

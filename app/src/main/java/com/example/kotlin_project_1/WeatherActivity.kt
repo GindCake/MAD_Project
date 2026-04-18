@@ -1,107 +1,168 @@
 package com.example.kotlin_project_1
 
-import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
-import android.util.Log
+import android.view.Gravity
+import android.widget.ImageView
+import android.widget.TableLayout
+import android.widget.TableRow
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.bumptech.glide.Glide
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class WeatherActivity : AppCompatActivity() {
-    private val TAG = "btaWeatherActivity"
-    private val API_KEY = "4c961a81229641e5dfeb04be4f4d5ef6"
-    private val BASE_URL = "https://api.openweathermap.org/data/2.5/"
+    private val baseUrl = "https://api.openweathermap.org/data/2.5/"
+    private val apiKey = "5b1569857a2b597cb0dfbe33eb23a72a" 
+
+    private lateinit var txtCity: TextView
+    private lateinit var txtTemp: TextView
+    private lateinit var txtDescription: TextView
+    private lateinit var imgWeather: ImageView
+    private lateinit var tvHumidity: TextView
+    private lateinit var tvDateTime: TextView
+    private lateinit var tvAltitude: TextView
+    private lateinit var tableForecast: TableLayout
+
+    private var currentLat: Double = 40.4523
+    private var currentLon: Double = -3.7261
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d(TAG, "onCreate: Weather activity created")
-        enableEdgeToEdge()
         setContentView(R.layout.activity_weather)
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
+        // Initialize UI
+        txtCity = findViewById(R.id.txtCity)
+        txtTemp = findViewById(R.id.txtTemp)
+        txtDescription = findViewById(R.id.txtDescription)
+        imgWeather = findViewById(R.id.imgWeatherIcon)
+        tvHumidity = findViewById(R.id.tvHumidity)
+        tvDateTime = findViewById(R.id.tvDateTime)
+        tvAltitude = findViewById(R.id.tvAltitude)
+        tableForecast = findViewById(R.id.tableForecast)
+
+        // Get coordinates from intent if available
+        currentLat = intent.getDoubleExtra("LATITUDE", 40.4523)
+        currentLon = intent.getDoubleExtra("LONGITUDE", -3.7261)
+        val altitude = intent.getDoubleExtra("ALTITUDE", 0.0)
+        
+        if (intent.hasExtra("ALTITUDE")) {
+            tvAltitude.text = String.format(Locale.getDefault(), "Altitude: %.2f m", altitude)
         }
 
-        setupNavigation()
-        fetchWeatherData()
+        fetchWeather(currentLat, currentLon)
+        fetchForecast(currentLat, currentLon)
     }
 
-    private fun fetchWeatherData() {
+    private fun fetchWeather(lat: Double, lon: Double) {
         val retrofit = Retrofit.Builder()
-            .baseUrl(BASE_URL)
+            .baseUrl(baseUrl)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
 
         val service = retrofit.create(WeatherService::class.java)
-        
-        // Default location: Campus Sur UPM (Madrid)
-        val lat = 40.3323
-        val lon = -3.7653
+        val call = service.getCurrentWeather(lat, lon, apiKey)
 
-        service.getCurrentWeather(lat, lon, API_KEY).enqueue(object : Callback<WeatherResponse> {
+        call.enqueue(object : Callback<WeatherResponse> {
             override fun onResponse(call: Call<WeatherResponse>, response: Response<WeatherResponse>) {
                 if (response.isSuccessful) {
-                    val weather = response.body()
-                    weather?.let {
-                        updateUI(it)
+                    response.body()?.let {
+                        txtCity.text = it.name
+                        txtTemp.text = String.format(Locale.getDefault(), "%s°C", it.main.temp.toString())
+                        txtDescription.text = it.weather[0].description.replaceFirstChar { char -> char.uppercase() }
+                        tvHumidity.text = String.format(Locale.getDefault(), "Humidity: %d%%", it.main.humidity)
+                        
+                        val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault())
+                        tvDateTime.text = String.format(Locale.getDefault(), "Update: %s", sdf.format(Date(it.dt * 1000)))
+
+                        val iconUrl = "https://openweathermap.org/img/wn/${it.weather[0].icon}@4x.png"
+                        Glide.with(this@WeatherActivity).load(iconUrl).into(imgWeather)
                     }
                 } else {
-                    val errorMsg = "Error ${response.code()}: ${response.message()}"
-                    Log.e(TAG, "Response failed: $errorMsg")
-                    // If you get 401, your API key is likely not active yet.
-                    Toast.makeText(this@WeatherActivity, "Failed to fetch: ${response.code()}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@WeatherActivity, "Weather Error: ${response.code()}", Toast.LENGTH_SHORT).show()
                 }
             }
-
             override fun onFailure(call: Call<WeatherResponse>, t: Throwable) {
-                Log.e(TAG, "Network failure", t)
-                Toast.makeText(this@WeatherActivity, "Network error: ${t.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(this@WeatherActivity, "Network Failure", Toast.LENGTH_SHORT).show()
             }
         })
     }
 
-    private fun updateUI(weather: WeatherResponse) {
-        findViewById<TextView>(R.id.tvLocation).text = "Location: ${weather.name}"
-        findViewById<TextView>(R.id.tvTemperature).text = "${weather.main.temp} °C"
-        findViewById<TextView>(R.id.tvDescription).text = weather.weather[0].description
-        findViewById<TextView>(R.id.tvHumidity).text = "Humidity: ${weather.main.humidity}%"
-        Log.d(TAG, "Weather updated: ${weather.name}, ${weather.main.temp}C")
+    private fun fetchForecast(lat: Double, lon: Double) {
+        val retrofit = Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+
+        val service = retrofit.create(WeatherService::class.java)
+        val call = service.getForecast(lat, lon, apiKey)
+
+        call.enqueue(object : Callback<ForecastResponse> {
+            override fun onResponse(call: Call<ForecastResponse>, response: Response<ForecastResponse>) {
+                if (response.isSuccessful) {
+                    val forecast = response.body()
+                    forecast?.let {
+                        populateForecastTable(it.list)
+                    }
+                } else {
+                    Toast.makeText(this@WeatherActivity, "Forecast Error: ${response.code()}", Toast.LENGTH_SHORT).show()
+                }
+            }
+            override fun onFailure(call: Call<ForecastResponse>, t: Throwable) {
+                Toast.makeText(this@WeatherActivity, "Network Failure", Toast.LENGTH_SHORT).show()
+            }
+        })
     }
 
-    private fun setupNavigation() {
-        val bottomNavigation: BottomNavigationView = findViewById(R.id.bottom_navigation)
-        bottomNavigation.selectedItemId = R.id.nav_map // Assuming weather is part of map/location section
-        bottomNavigation.setOnItemSelectedListener { item ->
-            when (item.itemId) {
-                R.id.nav_home -> {
-                    startActivity(Intent(this, MainActivity::class.java))
-                    true
-                }
-                R.id.nav_map -> {
-                    startActivity(Intent(this, OpenStreetMapsActivity::class.java))
-                    true
-                }
-                R.id.nav_list -> {
-                    startActivity(Intent(this, MainActivity2::class.java))
-                    true
-                }
-                R.id.nav_settings -> {
-                    startActivity(Intent(this, SettingsActivity::class.java))
-                    true
-                }
-                else -> false
-            }
+    private fun populateForecastTable(items: List<ForecastItem>) {
+        // Clear existing dynamic rows (keep header at index 0)
+        val childCount = tableForecast.childCount
+        if (childCount > 1) {
+            tableForecast.removeViews(1, childCount - 1)
         }
+
+        // The 5-day / 3-hour forecast returns many items. 
+        // We filter to show one per day (around midday) to simulate a daily forecast.
+        val dailyForecasts = items.filter { it.dtTxt.contains("12:00:00") }
+
+        for (item in dailyForecasts) {
+            val row = TableRow(this)
+            row.setPadding(0, 8, 0, 8)
+            
+            // Format Date (show only date part)
+            val dateStr = item.dtTxt.take(10)
+            
+            row.addView(createCell(dateStr))
+            row.addView(createCell("${item.main.temp}°C"))
+            row.addView(createCell("${item.main.humidity}%"))
+            row.addView(createCell("${item.clouds.all}%"))
+            row.addView(createCell("${item.wind.speed} m/s"))
+
+            tableForecast.addView(row)
+            
+            // Add a thin divider line
+            val divider = TableRow(this)
+            divider.setBackgroundColor(Color.LTGRAY)
+            val params = TableLayout.LayoutParams(TableLayout.LayoutParams.MATCH_PARENT, 1)
+            divider.layoutParams = params
+            tableForecast.addView(divider)
+        }
+    }
+
+    private fun createCell(text: String): TextView {
+        val tv = TextView(this)
+        tv.text = text
+        tv.gravity = Gravity.CENTER
+        tv.setPadding(8, 8, 8, 8)
+        tv.textSize = 12f
+        return tv
     }
 }

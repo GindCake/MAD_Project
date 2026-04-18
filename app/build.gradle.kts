@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.kapt)
+    alias(libs.plugins.google.services)
 }
 
 val localProperties = Properties()
@@ -50,6 +51,9 @@ android {
 }
 
 dependencies {
+    // Import the Firebase BoM
+    implementation(platform(libs.firebase.bom))
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
@@ -65,6 +69,10 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.livedata.ktx)
     
+    // Firebase Authentication
+    implementation(libs.firebase.auth)
+    implementation(libs.play.services.auth)
+
     // Google Maps and Location
     implementation(libs.play.services.maps)
     implementation(libs.play.services.location)
