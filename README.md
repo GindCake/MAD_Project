@@ -111,15 +111,40 @@ https://upm365-my.sharepoint.com/personal/iliyan_dimitrov_alumnos_upm_es/_layout
 *   **RankingActivity:** Real-time global leaderboard.
 *   **WeatherActivity:** Environmental data for the Madrid area.
 
-## 🔧 Setup
-1. Clone the repository.
-2. Add your `google-services.json` to the `app/` directory.
-3. Add your `MAPS_API_KEY` to `local.properties`.
-4. Build and run on an Android device with Google Play Services.
+## Firebase Setup:
+1. Create a Firebase project at firebase.google.com.
+2. Register an Android app with package name com.example.myapplication.
+3. Download and place google-services.json in app/google-services.json.
+4. Enable Authentication → Sign-in method → Email/Password.
+5. Create a Cloud Firestore database (Standard edition, locked mode recommended).
+6. Publish the following Firestore security rules:
+```
+ service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow users to read and write only their own document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Allow authenticated users to read the entire users collection for the ranking
+    match /users/{document=**} {
+      allow read: if request.auth != null;
+    }
+  }
+}
+```
+## Run Locally
+
+1. Open the project in Android Studio (latest stable recommended).
+2. Sync Gradle.
+3. Complete Firebase Setup (see above).
+4. Run on emulator or physical device:
+    Via terminal: ./gradlew installDebug
+    Or press Run in Android Studio.
 
 ## PARTICIPANTS
--iliyan.dimitrov@alumnos.upm.es
--a.astoyanov@alumnos.upm.es
+1. Iliyan Nikolov (iliyan.dimitrov@alumnos.upm.es)
+2. Aleksandar Stoyanov (a.astoyanov@alumnos.upm.es)
 
 ---
 *Developed for a greener future at Madrid's University Campus.*
