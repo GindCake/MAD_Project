@@ -1,5 +1,8 @@
 # EcoRoute Madrid 🌍♻️
 
+##Repositories:
+-GitHub repository : https://github.com/GindCake/MAD_Project
+
 EcoRoute Madrid is a modern Android application designed to promote sustainability and reward eco-friendly habits within the university campus. The app encourages users to recycle by gamifying the experience through points, levels, and a global ranking system.
 
 ## 🚀 Key Features
@@ -51,6 +54,10 @@ EcoRoute Madrid is a modern Android application designed to promote sustainabili
 2. Add your `google-services.json` to the `app/` directory.
 3. Add your `MAPS_API_KEY` to `local.properties`.
 4. Build and run on an Android device with Google Play Services.
+
+## PARTICIPANTS
+-iliyan.dimitrov@alumnos.upm.es
+-a.astoyanov@alumnos.upm.es
 
 ---
 *Developed for a greener future at Madrid's University Campus.*
